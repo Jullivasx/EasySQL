@@ -1,97 +1,80 @@
 const EasySql = require('./EasySql')
 EasySql.init(process.env.DATABASE_URL || require('./key'))
 
-test('EasySql: sqlDropTable', async () => {
-  expect(
-      EasySql.sqlDropTable('test')
-  )
-  .toEqual(
-      'DROP TABLE test;'
-  )
-})
+test('EasySql: создание/удаление таблицы, получения списка таблиц', async () => {
+  
+  let result = ''
 
-test('EasySql: sqlCreateTable', async () => {
-  expect(
-      EasySql.sqlCreateTable({
-        name: 'test',
-        items: [
-          {
-            name: 'id',
-            type: 'INT',
-            notNull: true,
-          },
-          {
-            name: 'name',
-            type: 'VARCHAR(50)',
-          },
-          {
-            name: 'age',
-            type: 'INT',
-          },
-        ]
-      })
-  )
-  .toEqual(
-      'CREATE TABLE test( id INT NOT NULL, name VARCHAR(50), age INT);'
-  )
-})
-
-test('EasySql: получения списка таблиц', async () => {
-  const res = await EasySql.allTables()
-  expect(
-      res.includes('actress'),
-  )
-  .toEqual(
-      true,
-  )
-})
-
-test('EasySql: создание таблицы', async () => {
-  let res = await EasySql.allTables()
-  if(res.includes('test')){
-    res = await EasySql.dropTable('test')
+  let list = await EasySql.allTables()
+  if(list.includes('test')){
+    await EasySql.dropTable('test')
   }
-  res = await EasySql.createTable({
-    name: 'test',
-    items: [
+
+  await EasySql.createTable('test',
+    [
       {
         name: 'name',
         type: 'VARCHAR(50)',
       }
     ]
-  })
-  res = await EasySql.allTables()
-  expect(
-      res.includes('test'),
   )
-  .toEqual(
-      true,
-  )
-})
-
-test('EasySql: удаление таблицы', async () => {
-
-  let res = await EasySql.allTables()
-
-  if(!res.includes('test')){
-    await EasySql.createTable({
-      name: 'test',
-      items: [
-        {
-          name: 'name',
-          type: 'VARCHAR(50)',
-        }
-      ]
-    })
+  list = await EasySql.allTables()
+  if(list.includes('test')){
+    result += 'C'
+    await EasySql.dropTable('test')
+    list = await EasySql.allTables()
+    if(!list.includes('test')){
+      result += 'D'
+    }
   }
-  
-  await EasySql.dropTable('test')
 
-  res = await EasySql.allTables()
   expect(
-      res.includes('test'),
+      result,
   )
   .toEqual(
-      false,
+      'CD',
   )
-})
+}, 30000)
+
+test('EasySql: вставка и проверка значения', async () => {
+
+  let list = await EasySql.allTables()
+  if(list.includes('test')){
+    await EasySql.dropTable('test')
+  }
+  await EasySql.createTable('test',
+    [
+      {
+        name: 'id',
+        type: 'INT',
+      },
+      {
+        name: 'name',
+        type: 'VARCHAR(50)',
+      },
+    ]
+  )
+
+  await EasySql.insert('test', {
+    id: 0,
+    name: 'Lena',
+  })
+
+  const res = await EasySql.select('test', ['id', 'name'])
+
+  list = await EasySql.allTables()
+  if(list.includes('test')){
+    await EasySql.dropTable('test')
+  }
+
+  expect(
+      res,
+  )
+  .toEqual(
+      [{
+        id: 0,
+        name: 'Lena',
+      }]
+  )
+
+}, 30000)
